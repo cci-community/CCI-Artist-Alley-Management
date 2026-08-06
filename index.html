@@ -35,40 +35,26 @@
 
     <!-- ===== STATS BAR ===== -->
     <div class="stats-section">
-        <div class="stats-grid">
-            <div class="stat-card">
+        <div class="stats-grid stats-grid-3">
+            <div class="stat-card clickable" id="btn-shows" onclick="setMainView('shows')">
                 <div class="stat-icon">🎪</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="statTotalVal">—</div>
-                    <div class="stat-label">Total Booths</div>
+                    <div class="stat-value" id="statTotalShows">14</div>
+                    <div class="stat-label">TOTAL SHOWS</div>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card clickable active" id="btn-database" onclick="setMainView('database')">
                 <div class="stat-icon">🎭</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="statAssignedVal">—</div>
-                    <div class="stat-label">Assigned Artists</div>
+                    <div class="stat-value" id="statTotalArtists">—</div>
+                    <div class="stat-label">ARTISTS DATABASE</div>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card clickable" id="btn-onboarded" onclick="setMainView('onboarded')">
                 <div class="stat-icon">📝</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="statConsentVal">—</div>
-                    <div class="stat-label">Consents Sent</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">💰</div>
-                <div class="stat-info">
-                    <div class="stat-value" id="statGstVal">—</div>
-                    <div class="stat-label">GST Received</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">📖</div>
-                <div class="stat-info">
-                    <div class="stat-value" id="statLaunchVal">—</div>
-                    <div class="stat-label">Book Launches</div>
+                    <div class="stat-value" id="statArtistsOnboarded">—</div>
+                    <div class="stat-label">ARTIST ONBOARDED</div>
                 </div>
             </div>
         </div>
@@ -76,91 +62,56 @@
 
     <!-- ===== MAIN ===== -->
     <main class="main">
-
-        <!-- Tab Navigation -->
+        <!-- Tab Navigation (Optional, kept for consistency with screenshot) -->
         <nav class="tab-nav" id="tabNav">
-            <button class="tab active" data-tab="artists" id="tab-btn-artists">🎨 Artists</button>
-            <button class="tab" data-tab="overview" id="tab-btn-overview">📊 Overview</button>
+            <button class="tab active" data-tab="artists" id="tab-btn-artists" onclick="setMainView('database')">🎨 Artists</button>
+            <button class="tab" data-tab="overview" id="tab-btn-overview" onclick="setMainView('shows')">📊 Show Overview</button>
         </nav>
 
-        <!-- ===== ARTISTS TAB ===== -->
-        <section class="tab-content active" id="tab-artists">
+        <!-- ===== ARTISTS DATABASE / ONBOARDED VIEW ===== -->
+        <section class="tab-content active" id="view-artists">
             <div class="filters">
                 <div class="search-wrap">
                     <span class="search-icon">🔍</span>
-                    <input type="text" id="searchInput" placeholder="Search artists, POC, email..." class="search-input" autocomplete="off">
+                    <input type="text" id="searchInput" placeholder="Search artists, POC, email, city..." class="search-input" autocomplete="off">
                     <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none">✕</button>
                 </div>
-                <select id="statusFilter" class="filter-select">
-                    <option value="">All Statuses</option>
-                    <option value="no-consent">Pending Consent</option>
-                    <option value="no-gst">Pending GST</option>
-                    <option value="book-launch">Book Launch Planned</option>
-                </select>
-                <div class="view-toggle">
-                    <button class="view-btn active" id="gridViewBtn" onclick="setView('grid')" title="Grid View">⊞</button>
-                    <button class="view-btn" id="tableViewBtn" onclick="setView('table')" title="Table View">≡</button>
-                </div>
+                <!-- We can add filters here if needed -->
             </div>
             
-            <div id="pasteCsvFallback" style="display:none; padding: 24px; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: 12px; margin-bottom: 24px;">
-                <h3 style="color: var(--danger); margin-bottom: 8px;">⚠️ Could not fetch data automatically</h3>
-                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
-                    Browsers often block automatic fetching from Google Sheets for security (CORS). 
-                    As a fallback, <strong>Download as CSV</strong> from Google Sheets and paste the contents here:
-                </p>
-                <textarea id="csvPasteBox" style="width: 100%; height: 120px; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); color: var(--text); padding: 12px; border-radius: 8px; margin-bottom: 12px; font-family: monospace; font-size: 11px;" placeholder="Paste CSV data here..."></textarea>
-                <button onclick="loadPastedData()" style="background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer;">Load Pasted Data</button>
-            </div>
-
             <div class="results-bar">
                 <span class="results-count" id="resultsCount">Loading...</span>
-                <button class="clear-filters-btn" id="clearFiltersBtn" onclick="clearAllFilters()" style="display:none">Clear Filters</button>
             </div>
 
-            <!-- Grid View -->
+            <!-- Grid View for Database -->
             <div class="artists-grid" id="artistsGrid"></div>
-
-            <!-- Table View -->
-            <div class="table-wrap hidden" id="artistsTable">
-                <table class="data-table" id="dataTable">
-                    <thead>
-                        <tr>
-                            <th data-col="slNo" class="sortable">#</th>
-                            <th data-col="brandName" class="sortable">Brand Name</th>
-                            <th data-col="poc" class="sortable">POC</th>
-                            <th data-col="email" class="sortable">Email</th>
-                            <th data-col="consentSent" class="sortable">Consent</th>
-                            <th data-col="gstReceived" class="sortable">GST</th>
-                            <th data-col="bookLaunch" class="sortable">Book Launch</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody"></tbody>
-                </table>
-            </div>
         </section>
 
-        <!-- ===== OVERVIEW TAB ===== -->
-        <section class="tab-content" id="tab-overview">
-            <div class="charts-grid">
-                
-                <div class="chart-card">
-                    <h3 class="chart-title">Compliance Tracking</h3>
-                    <p class="chart-subtitle">Consent letters and GST details received</p>
-                    <div class="chart-container">
-                        <canvas id="complianceChart"></canvas>
-                    </div>
-                </div>
-
-                <div class="chart-card">
-                    <h3 class="chart-title">Booth Allocation</h3>
-                    <p class="chart-subtitle">Assigned artists vs Available capacity</p>
-                    <div class="chart-container">
-                        <canvas id="boothChart"></canvas>
-                    </div>
-                </div>
-
+        <!-- ===== SHOW-WISE TABULAR VIEW ===== -->
+        <section class="tab-content" id="view-shows">
+            <div class="filters">
+                <select id="showSelect" class="filter-select" onchange="renderShowTable()">
+                    <option value="">Select a Show...</option>
+                    <!-- Populated via JS -->
+                </select>
+            </div>
+            
+            <div class="table-wrap" id="showTableContainer">
+                <table class="data-table" id="showDataTable">
+                    <thead>
+                        <tr>
+                            <th class="sortable">Brand Name</th>
+                            <th class="sortable">POC</th>
+                            <th class="sortable">Consent Sent</th>
+                            <th class="sortable">GST Received</th>
+                            <th class="sortable">Book Launch</th>
+                            <th class="sortable">Stage Activity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="showTableBody">
+                        <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Please select a show to view artists.</td></tr>
+                    </tbody>
+                </table>
             </div>
         </section>
 
