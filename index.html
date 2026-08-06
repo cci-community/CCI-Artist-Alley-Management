@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCI Artist Alley — Management Dashboard</title>
+    <meta name="description" content="Comic Con India Artist Alley Management System">
+    <meta name="theme-color" content="#0a0a1a">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- ===== HEADER ===== -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="header-brand">
+                <div class="brand-icon">🎨</div>
+                <div>
+                    <h1 class="brand-title">CCI Artist Alley</h1>
+                    <p class="brand-sub">Management Dashboard</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <span class="last-updated" id="lastUpdated"></span>
+                <button class="btn-refresh" id="refreshBtn" onclick="loadData()">
+                    <span class="refresh-icon">↻</span>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== STATS BAR ===== -->
+    <div class="stats-section">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">🎪</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statTotalVal">—</div>
+                    <div class="stat-label">Total Booths</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🎭</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statAssignedVal">—</div>
+                    <div class="stat-label">Assigned Artists</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📝</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statConsentVal">—</div>
+                    <div class="stat-label">Consents Sent</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statGstVal">—</div>
+                    <div class="stat-label">GST Received</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📖</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statLaunchVal">—</div>
+                    <div class="stat-label">Book Launches</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main">
+
+        <!-- Tab Navigation -->
+        <nav class="tab-nav" id="tabNav">
+            <button class="tab active" data-tab="artists" id="tab-btn-artists">🎨 Artists</button>
+            <button class="tab" data-tab="overview" id="tab-btn-overview">📊 Overview</button>
+        </nav>
+
+        <!-- ===== ARTISTS TAB ===== -->
+        <section class="tab-content active" id="tab-artists">
+            <div class="filters">
+                <div class="search-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Search artists, POC, email..." class="search-input" autocomplete="off">
+                    <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none">✕</button>
+                </div>
+                <select id="statusFilter" class="filter-select">
+                    <option value="">All Statuses</option>
+                    <option value="no-consent">Pending Consent</option>
+                    <option value="no-gst">Pending GST</option>
+                    <option value="book-launch">Book Launch Planned</option>
+                </select>
+                <div class="view-toggle">
+                    <button class="view-btn active" id="gridViewBtn" onclick="setView('grid')" title="Grid View">⊞</button>
+                    <button class="view-btn" id="tableViewBtn" onclick="setView('table')" title="Table View">≡</button>
+                </div>
+            </div>
+            
+            <div id="pasteCsvFallback" style="display:none; padding: 24px; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: 12px; margin-bottom: 24px;">
+                <h3 style="color: var(--danger); margin-bottom: 8px;">⚠️ Could not fetch data automatically</h3>
+                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+                    Browsers often block automatic fetching from Google Sheets for security (CORS). 
+                    As a fallback, <strong>Download as CSV</strong> from Google Sheets and paste the contents here:
+                </p>
+                <textarea id="csvPasteBox" style="width: 100%; height: 120px; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); color: var(--text); padding: 12px; border-radius: 8px; margin-bottom: 12px; font-family: monospace; font-size: 11px;" placeholder="Paste CSV data here..."></textarea>
+                <button onclick="loadPastedData()" style="background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer;">Load Pasted Data</button>
+            </div>
+
+            <div class="results-bar">
+                <span class="results-count" id="resultsCount">Loading...</span>
+                <button class="clear-filters-btn" id="clearFiltersBtn" onclick="clearAllFilters()" style="display:none">Clear Filters</button>
+            </div>
+
+            <!-- Grid View -->
+            <div class="artists-grid" id="artistsGrid"></div>
+
+            <!-- Table View -->
+            <div class="table-wrap hidden" id="artistsTable">
+                <table class="data-table" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th data-col="slNo" class="sortable">#</th>
+                            <th data-col="brandName" class="sortable">Brand Name</th>
+                            <th data-col="poc" class="sortable">POC</th>
+                            <th data-col="email" class="sortable">Email</th>
+                            <th data-col="consentSent" class="sortable">Consent</th>
+                            <th data-col="gstReceived" class="sortable">GST</th>
+                            <th data-col="bookLaunch" class="sortable">Book Launch</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ===== OVERVIEW TAB ===== -->
+        <section class="tab-content" id="tab-overview">
+            <div class="charts-grid">
+                
+                <div class="chart-card">
+                    <h3 class="chart-title">Compliance Tracking</h3>
+                    <p class="chart-subtitle">Consent letters and GST details received</p>
+                    <div class="chart-container">
+                        <canvas id="complianceChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h3 class="chart-title">Booth Allocation</h3>
+                    <p class="chart-subtitle">Assigned artists vs Available capacity</p>
+                    <div class="chart-container">
+                        <canvas id="boothChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ===== TOAST ===== -->
+    <div class="toast" id="errorToast"></div>
+
+    <!-- ===== LOADING ===== -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- ===== MODAL OVERLAY ===== -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+        <div class="modal-panel" id="modalPanel" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <div class="modal-content-wrap" id="modalContent">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
