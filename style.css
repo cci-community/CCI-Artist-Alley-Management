@@ -180,6 +180,10 @@ body {
   gap: 14px;
 }
 
+.stats-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 .stat-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -192,6 +196,16 @@ body {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+}
+
+.stat-card.active {
+  background: rgba(124, 58, 237, 0.1);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent-glow), var(--shadow-glow);
 }
 
 .stat-card::after {
