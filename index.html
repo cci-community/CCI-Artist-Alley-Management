@@ -35,26 +35,40 @@
 
     <!-- ===== STATS BAR ===== -->
     <div class="stats-section">
-        <div class="stats-grid stats-grid-3">
-            <div class="stat-card clickable" id="btn-shows" onclick="setMainView('shows')">
+        <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">
+            <div class="stat-card">
                 <div class="stat-icon">🎪</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="statTotalShows">14</div>
-                    <div class="stat-label">TOTAL SHOWS</div>
+                    <div class="stat-value" id="statTotalVal">—</div>
+                    <div class="stat-label">TOTAL BOOTHS</div>
                 </div>
             </div>
-            <div class="stat-card clickable active" id="btn-database" onclick="setMainView('database')">
+            <div class="stat-card">
                 <div class="stat-icon">🎭</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="statTotalArtists">—</div>
-                    <div class="stat-label">ARTISTS DATABASE</div>
+                    <div class="stat-value" id="statAssignedVal">—</div>
+                    <div class="stat-label">ARTISTS</div>
                 </div>
             </div>
-            <div class="stat-card clickable" id="btn-onboarded" onclick="setMainView('onboarded')">
-                <div class="stat-icon">📝</div>
+            <div class="stat-card">
+                <div class="stat-icon">✉️</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="statArtistsOnboarded">—</div>
-                    <div class="stat-label">ARTIST ONBOARDED</div>
+                    <div class="stat-value" id="statConsentVal">—</div>
+                    <div class="stat-label">CONSENT SENT</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🧾</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statGstVal">—</div>
+                    <div class="stat-label">GST RECEIVED</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📖</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statLaunchVal">—</div>
+                    <div class="stat-label">BOOK LAUNCHES</div>
                 </div>
             </div>
         </div>
@@ -62,79 +76,205 @@
 
     <!-- ===== MAIN ===== -->
     <main class="main">
-        <!-- Tab Navigation (Optional, kept for consistency with screenshot) -->
+
+        <!-- Tab Navigation -->
         <nav class="tab-nav" id="tabNav">
-            <button class="tab active" data-tab="artists" id="tab-btn-artists" onclick="setMainView('database')">🎨 Artists</button>
-            <button class="tab" data-tab="overview" id="tab-btn-overview" onclick="setMainView('shows')">📊 Show Overview</button>
+            <button class="tab active" data-tab="artists">🎨 Artists</button>
+            <button class="tab" data-tab="overview">📊 Overview</button>
         </nav>
 
-        <!-- ===== ARTISTS DATABASE / ONBOARDED VIEW ===== -->
-        <section class="tab-content active" id="view-artists">
+        <!-- ===== ARTISTS TAB ===== -->
+        <section class="tab-content active" id="tab-artists">
+
             <div class="filters">
+                <!-- Search -->
                 <div class="search-wrap">
                     <span class="search-icon">🔍</span>
-                    <input type="text" id="searchInput" placeholder="Search artists, POC, email, city..." class="search-input" autocomplete="off">
+                    <input type="text" id="searchInput" placeholder="Search artists, POC, email..." class="search-input" autocomplete="off">
                     <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none">✕</button>
                 </div>
-                <!-- We can add filters here if needed -->
+
+                <!-- Status filter -->
+                <select id="statusFilter" class="filter-select">
+                    <option value="">All Artists</option>
+                    <option value="no-consent">Missing Consent</option>
+                    <option value="no-gst">Missing GST</option>
+                    <option value="book-launch">Book Launch</option>
+                </select>
+
+                <!-- View toggle -->
+                <div class="view-toggle">
+                    <button class="view-btn active" id="gridViewBtn" onclick="setView('grid')" title="Grid view">▦</button>
+                    <button class="view-btn" id="tableViewBtn" onclick="setView('table')" title="Table view">☰</button>
+                </div>
+
+                <!-- Clear filters -->
+                <button class="btn-clear-filters" id="clearFiltersBtn" onclick="clearAllFilters()" style="display:none">✕ Clear</button>
             </div>
-            
+
             <div class="results-bar">
                 <span class="results-count" id="resultsCount">Loading...</span>
             </div>
 
-            <!-- Grid View for Database -->
+            <!-- Grid View -->
             <div class="artists-grid" id="artistsGrid"></div>
-        </section>
 
-        <!-- ===== SHOW-WISE TABULAR VIEW ===== -->
-        <section class="tab-content" id="view-shows">
-            <div class="filters">
-                <select id="showSelect" class="filter-select" onchange="renderShowTable()">
-                    <option value="">Select a Show...</option>
-                    <!-- Populated via JS -->
-                </select>
-            </div>
-            
-            <div class="table-wrap" id="showTableContainer">
-                <table class="data-table" id="showDataTable">
+            <!-- Table View -->
+            <div class="table-wrap hidden" id="artistsTable">
+                <table class="data-table">
                     <thead>
                         <tr>
-                            <th class="sortable">Brand Name</th>
-                            <th class="sortable">POC</th>
-                            <th class="sortable">Consent Sent</th>
-                            <th class="sortable">GST Received</th>
-                            <th class="sortable">Book Launch</th>
-                            <th class="sortable">Stage Activity</th>
+                            <th class="sortable" data-col="slNo">#</th>
+                            <th class="sortable" data-col="brandName">Brand Name</th>
+                            <th class="sortable" data-col="poc">POC</th>
+                            <th>Email</th>
+                            <th class="sortable" data-col="consentSent">Consent</th>
+                            <th class="sortable" data-col="gstReceived">GST</th>
+                            <th class="sortable" data-col="bookLaunch">Book Launch</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="showTableBody">
-                        <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Please select a show to view artists.</td></tr>
-                    </tbody>
+                    <tbody id="tableBody"></tbody>
                 </table>
+            </div>
+
+            <!-- CSV Paste Fallback (shown when auto-fetch fails) -->
+            <div id="pasteCsvFallback" style="display:none; margin-top:28px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:24px;">
+                <p style="font-size:13px; color:#94a3b8; margin-bottom:12px;">
+                    📋 <strong style="color:#f1f5f9">Paste CSV data manually</strong> — 
+                    Go to your Google Sheet → File → Download → CSV, then paste it below.
+                </p>
+                <textarea id="csvPasteBox" placeholder="Paste CSV content here..." rows="6"
+                    style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px;color:#f1f5f9;font-size:12px;font-family:monospace;resize:vertical;outline:none;">
+                </textarea>
+                <button onclick="loadPastedData()"
+                    style="margin-top:10px;padding:10px 20px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
+                    Load Data
+                </button>
+            </div>
+        </section>
+
+        <!-- ===== OVERVIEW TAB ===== -->
+        <section class="tab-content" id="tab-overview">
+            <div class="charts-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:8px">
+                <div class="chart-card" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:24px">
+                    <h3 style="font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:18px">Compliance Status</h3>
+                    <div style="position:relative;height:220px">
+                        <canvas id="complianceChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:24px">
+                    <h3 style="font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:18px">Booth Allocation</h3>
+                    <div style="position:relative;height:220px">
+                        <canvas id="boothChart"></canvas>
+                    </div>
+                </div>
             </div>
         </section>
 
     </main>
 
     <!-- ===== TOAST ===== -->
-    <div class="toast" id="errorToast"></div>
+    <div class="toast" id="errorToast" style="position:fixed;bottom:28px;right:28px;background:#ef4444;color:white;padding:14px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:4000;max-width:400px;opacity:0;transform:translateY(12px);transition:all .3s ease;pointer-events:none"></div>
 
-    <!-- ===== LOADING ===== -->
+    <!-- ===== LOADING OVERLAY ===== -->
     <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner"></div>
+        <div style="text-align:center">
+            <div class="loader" style="width:44px;height:44px;border:3px solid rgba(124,58,237,0.2);border-top-color:#a855f7;border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 16px"></div>
+            <div class="loading-text" style="font-size:13px;color:#4b5675;font-weight:500">Loading artist data...</div>
+        </div>
     </div>
 
-    <!-- ===== MODAL OVERLAY ===== -->
+    <!-- ===== MODAL ===== -->
     <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
-        <div class="modal-panel" id="modalPanel" onclick="event.stopPropagation()">
+        <div class="modal" onclick="event.stopPropagation()">
             <button class="modal-close" onclick="closeModal()">✕</button>
-            <div class="modal-content-wrap" id="modalContent">
-                <!-- Injected via JS -->
-            </div>
+            <div class="modal-body" id="modalContent"></div>
         </div>
     </div>
 
     <script src="app.js"></script>
+
+    <style>
+        /* Patch: toast.show class (app.js uses this) */
+        .toast.show { opacity:1 !important; transform:translateY(0) !important; pointer-events:all !important; }
+
+        /* Patch: view toggle buttons */
+        .view-toggle { display:flex; gap:4px; }
+        .view-btn { width:34px;height:34px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#94a3b8;font-size:14px;cursor:pointer;transition:all .2s; }
+        .view-btn.active { background:rgba(124,58,237,0.2);border-color:rgba(124,58,237,0.5);color:#c084fc; }
+        .view-btn:hover:not(.active) { color:#f1f5f9; }
+
+        /* Patch: filter select */
+        .filter-select { padding:9px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#f1f5f9;font-family:Inter,sans-serif;font-size:13px;cursor:pointer;outline:none; }
+        .filter-select option { background:#0d0d24;color:#f1f5f9; }
+
+        /* Patch: clear filters button */
+        .btn-clear-filters { padding:9px 14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:10px;color:#ef4444;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s; }
+        .btn-clear-filters:hover { background:rgba(239,68,68,0.2); }
+
+        /* Patch: results bar */
+        .results-bar { margin-bottom:16px; }
+        .results-count { font-size:12px;color:#4b5675;font-weight:500; }
+        .results-count strong { color:#94a3b8; }
+
+        /* Patch: table hidden */
+        .hidden { display:none !important; }
+
+        /* Patch: search clear button */
+        .search-clear { position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#4b5675;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;transition:all .2s; }
+        .search-clear:hover { background:rgba(255,255,255,0.1);color:#f1f5f9; }
+
+        /* Patch: search input */
+        .search-input { width:100%;padding:10px 36px 10px 42px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#f1f5f9;font-family:Inter,sans-serif;font-size:13px;outline:none;transition:all .2s; }
+        .search-input:focus { border-color:rgba(124,58,237,0.5);background:rgba(255,255,255,0.08); }
+        .search-input::placeholder { color:#4b5675; }
+
+        /* Patch: artists grid */
+        .artists-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px; }
+
+        /* Patch: artist card */
+        .artist-card { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:18px;cursor:pointer;transition:all .25s;position:relative;animation:fadeSlideIn .35s ease both; }
+        .artist-card:hover { background:rgba(255,255,255,0.07);border-color:rgba(124,58,237,0.4);transform:translateY(-3px);box-shadow:0 0 40px rgba(124,58,237,0.12); }
+        .card-num { position:absolute;top:14px;right:14px;font-size:10px;color:#4b5675;font-weight:700; }
+        .card-header-row { display:flex;align-items:center;gap:12px;margin-bottom:12px; }
+        .card-avatar { width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:white;flex-shrink:0;letter-spacing:-.02em; }
+        .card-brand { font-size:14px;font-weight:800;color:#f1f5f9;letter-spacing:-.01em;line-height:1.2;margin-bottom:2px; }
+        .card-poc { font-size:11px;color:#4b5675;font-weight:500; }
+        .card-tags { display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;min-height:10px; }
+        .card-asset-row { margin-bottom:12px; }
+        .card-footer { display:flex;align-items:center;justify-content:flex-end;border-top:1px solid rgba(255,255,255,0.05);padding-top:10px;margin-top:4px; }
+
+        /* Patch: badges */
+        .badge { display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700; }
+        .badge-conv { background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.25); }
+        .badge-success { background:rgba(16,185,129,0.15);color:#10b981; }
+
+        /* Patch: detail button */
+        .btn-detail { padding:6px 14px;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);border-radius:8px;color:#a855f7;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s; }
+        .btn-detail:hover { background:rgba(124,58,237,0.25);border-color:rgba(124,58,237,0.5); }
+
+        /* Patch: data table */
+        .data-table { width:100%;border-collapse:collapse;font-size:13px; }
+        .data-table th { padding:10px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#4b5675;border-bottom:1px solid rgba(255,255,255,0.07);white-space:nowrap;cursor:pointer;user-select:none; }
+        .data-table th.sortable:hover { color:#94a3b8; }
+        .data-table td { padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:#94a3b8;vertical-align:middle; }
+        .data-table tr:hover td { background:rgba(255,255,255,0.03);cursor:pointer; }
+        .table-wrap { overflow-x:auto;border-radius:16px;border:1px solid rgba(255,255,255,0.07);background:rgba(255,255,255,0.02); }
+        .td-num { color:#4b5675;font-weight:700;font-size:12px; }
+        .td-inline { display:flex;align-items:center;gap:10px; }
+        .td-avatar { width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:white;flex-shrink:0; }
+        .td-brand { font-size:13px;font-weight:700;color:#f1f5f9; }
+
+        /* Patch: empty state */
+        .empty-state { grid-column:1/-1;text-align:center;padding:64px 24px; }
+        .empty-icon { font-size:48px;margin-bottom:16px;opacity:.5; }
+        .empty-state h3 { font-size:16px;font-weight:700;color:#94a3b8;margin-bottom:8px; }
+        .empty-state p { font-size:13px;color:#4b5675; }
+
+        /* Patch: keyframes (spinner used in loading overlay) */
+        @keyframes spin { to { transform:rotate(360deg); } }
+        @keyframes fadeSlideIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    </style>
 </body>
 </html>
