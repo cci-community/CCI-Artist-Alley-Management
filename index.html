@@ -618,11 +618,11 @@ async function loadAllData() {
         slNo:          parseInt(r[0]) || (i + 1),
         brandName:     r[1]?.trim() || '',
         poc:           r[2]?.trim() || '',
-        email:         r[3]?.trim() || '',
-        consentSent:   bool(r[4]),
-        gstReceived:   bool(r[5]),
-        bookLaunch:    bool(r[6]),
-        stageActivity: r[7]?.trim() || '',
+        email:         r[4]?.trim() || '',
+        consentSent:   false,
+        gstReceived:   false,
+        bookLaunch:    false,
+        stageActivity: '',
         shows:         shows,
         isOnboarded:   shows.length > 0
       };
@@ -634,7 +634,7 @@ async function loadAllData() {
 
   const promises = SHOWS.map(async show => {
     try {
-      const csv = await fetchCSV(show.gid);
+      const csv = await fetchTabCSV(show.key);
       showData[show.key] = parseShowCSV(csv, show.key);
     } catch(e) {
       console.warn(`[CCI] ${show.key} failed:`, e.message);
@@ -876,9 +876,10 @@ function renderShowView() {
   let anyShown = false;
 
   for(const show of shows) {
-    const artists = (showData[show.key]||[]).filter(a => {
-      if(!q) return true;
-      return [a.brandName,a.poc,a.email].join(' ').toLowerCase().includes(q);
+    const artists = allArtists.filter(a => {
+      if (!a.shows.includes(show.key)) return false;
+      if (!q) return true;
+      return [a.brandName, a.poc, a.email].join(' ').toLowerCase().includes(q);
     });
 
     if(shf && !artists.length) continue;
