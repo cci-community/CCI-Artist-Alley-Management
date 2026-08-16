@@ -18,12 +18,12 @@ const CITY_SHEETS = [
     { code: 'JCC',  name: 'Jaipur' },
     { code: 'ICC',  name: 'Indore' },
     { code: 'CCC',  name: 'Chennai' },
-    { code: 'KCC',  name: 'Kochi' },
+    { code: 'KoCC',  name: 'Kochi' },
     { code: 'PCC',  name: 'Pune' },
     { code: 'BCC',  name: 'Bengaluru' },
     { code: 'GCC',  name: 'Guwahati' },
-    { code: 'KOL',  name: 'Kolkata' },
-    { code: 'GRM',  name: 'Gurugram' },
+    { code: 'KCC',  name: 'Kolkata' },
+    { code: 'GGCC',  name: 'Gurugram' },
     { code: 'MCC',  name: 'Mumbai' }
 ];
 
