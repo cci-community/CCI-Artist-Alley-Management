@@ -1100,18 +1100,18 @@ function downloadConsent(id) {
   const letters = a.shows.map(k => {
     const s = SHOWS.find(x=>x.key===k);
     if (!s) return '';
-    return \`TO WHOMSOEVER IT MAY CONCERN
+    return `TO WHOMSOEVER IT MAY CONCERN
 
-This is to confirm that \${a.brandName} will participate in \${s.city} Comic Con 2026, to be held at \${s.venue} from \${s.dates}.
+This is to confirm that ${a.brandName} will participate in ${s.city} Comic Con 2026, to be held at ${s.venue} from ${s.dates}.
 They have taken a stall/booth and will be present at the event for exhibition purposes.
-\`;
-  }).filter(Boolean).join('\\n\\n------------------------------------------------------------\\n\\n');
+`;
+  }).filter(Boolean).join('\n\n------------------------------------------------------------\n\n');
 
   const blob = new Blob([letters], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
   const aTag = document.createElement('a');
   aTag.href = url;
-  aTag.download = \`Consent_Letter_\${a.brandName.replace(/[^a-z0-9]/gi, '_')}.txt\`;
+  aTag.download = `Consent_Letter_${a.brandName.replace(/[^a-z0-9]/gi, '_')}.txt`;
   document.body.appendChild(aTag);
   aTag.click();
   document.body.removeChild(aTag);
