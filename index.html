@@ -388,6 +388,23 @@ tbody tr:last-child td{border-bottom:none}
 // ══════════════════════════════════════════════════════════════
 const SHEET_ID = '1H7_Vdsuq8B3Bp-f00CLRxUyDPk1QiWxLfwnhJaEmmR0';
 
+const CITY_COLUMNS = [
+  { key: 'VCC',  city: 'Vizag',       colIndex: 8  },
+  { key: 'HCC',  city: 'Hyderabad',   colIndex: 9  },
+  { key: 'NMCC', city: 'Navi Mumbai', colIndex: 10 },
+  { key: 'DCC',  city: 'Delhi',       colIndex: 11 },
+  { key: 'JCC',  city: 'Jaipur',      colIndex: 12 },
+  { key: 'ICC',  city: 'Indore',      colIndex: 13 },
+  { key: 'CCC',  city: 'Chennai',     colIndex: 14 },
+  { key: 'KoCC', city: 'Kochi',       colIndex: 15 },
+  { key: 'PCC',  city: 'Pune',        colIndex: 16 },
+  { key: 'BCC',  city: 'Bengaluru',   colIndex: 17 },
+  { key: 'GCC',  city: 'Guwahati',    colIndex: 18 },
+  { key: 'KCC',  city: 'Kolkata',     colIndex: 19 },
+  { key: 'GGCC', city: 'Gurugram',    colIndex: 20 },
+  { key: 'MCC',  city: 'Mumbai',      colIndex: 21 },
+];
+
 const SHOWS = [
   { key:'VCC', city:'Vizag',       dates:'Oct 10-11',    venue:'Kalam Convention Centre',         gid:'0'   },
   { key:'HCC', city:'Hyderabad',   dates:'Oct 30-Nov 1', venue:'HITEX Exhibition Centre',         gid:'1'   },
@@ -489,6 +506,25 @@ function parseShowCSV(raw, showKey) {
     }));
 }
 
+async function fetchTabCSV(sheetName) {
+  const target = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+  let last;
+  for(const proxy of PROXIES) {
+    const url = proxy(target);
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(()=>ctrl.abort(),8000);
+      const res = await fetch(url, {cache:'no-store',signal:ctrl.signal});
+      clearTimeout(t);
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      if(text.length < 30) throw new Error('Empty response');
+      return text;
+    } catch(e) { last=e; }
+  }
+  throw new Error(last?.message || 'Fetch failed');
+}
+
 // ── FETCH WITH FALLBACK ──────────────────────────────────────
 async function fetchCSV(gid) {
   const target = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
@@ -511,33 +547,27 @@ async function fetchCSV(gid) {
 
 // ── MERGE SHOW DATA INTO MASTER LIST ────────────────────────
 function mergeIntoMaster() {
-  // Build master from all show data, deduplicated by email (or brandName if no email)
-  const byKey = {}; // key -> artist
-  let idCounter = 0;
-
+  // allArtists is already populated from the Tracker sheet in loadAllData.
+  // We just need to merge the compliance flags from showData into it.
   for(const show of SHOWS) {
     const artists = showData[show.key] || [];
     for(const a of artists) {
-      const key = a.email ? a.email.toLowerCase().trim() : a.brandName.toLowerCase().trim();
-      if(!byKey[key]) {
-        byKey[key] = { ...a, id: idCounter++, shows: [] };
+      const match = allArtists.find(master => 
+        (master.email && a.email && master.email.toLowerCase() === a.email.toLowerCase()) ||
+        (master.brandName.toLowerCase() === a.brandName.toLowerCase())
+      );
+      if (match) {
+        if(a.consentSent) match.consentSent = true;
+        if(a.gstReceived) match.gstReceived = true;
+        if(a.bookLaunch)  match.bookLaunch  = true;
+        if(a.stageActivity && !match.stageActivity) match.stageActivity = a.stageActivity;
       }
-      const master = byKey[key];
-      // Merge fields (OR for booleans, prefer truthy)
-      if(a.consentSent) master.consentSent = true;
-      if(a.gstReceived) master.gstReceived = true;
-      if(a.bookLaunch)  master.bookLaunch  = true;
-      if(a.stageActivity && !master.stageActivity) master.stageActivity = a.stageActivity;
-      if(a.poc && !master.poc) master.poc = a.poc;
-      if(a.email && !master.email) master.email = a.email;
-      if(!master.shows.includes(show.key)) master.shows.push(show.key);
     }
   }
 
-  allArtists = Object.values(byKey);
-
   // Onboarded = in any show sheet
-  onboardedSet = new Set(allArtists.filter(a=>a.shows.length>0).map(a=>a.id));
+  allArtists.forEach(a => a.isOnboarded = a.shows.length > 0);
+  onboardedSet = new Set(allArtists.filter(a=>a.isOnboarded).map(a=>a.id));
 
   // Update stats
   document.getElementById('sv-db').textContent = allArtists.length;
@@ -551,7 +581,7 @@ function mergeIntoMaster() {
 
 // ── VIEW HELPERS ─────────────────────────────────────────────
 function getViewArtists() {
-  if(mainView === 'onboarded') return allArtists.filter(a=>a.shows.length>0);
+  if(mainView === 'onboarded') return allArtists.filter(a=>a.isOnboarded);
   return allArtists; // database = all
 }
 
@@ -562,6 +592,46 @@ async function loadAllData() {
   btn.disabled = true;
 
   let anyFailed = false;
+
+  try {
+    // 1. Fetch Master Tracker Tab
+    const trackerText = await fetchTabCSV('Tracker');
+    const rows = parseCSV(trackerText);
+    
+    // Header check
+    let startIdx = 0;
+    if (rows[0] && !rows[0].join('').toLowerCase().includes('brand')) {
+      startIdx = 1;
+    }
+    const dataRows = rows.slice(startIdx + 1).filter(r => r[1] && r[1].trim());
+
+    // Parse artists and check columns I to V for checked cities
+    allArtists = dataRows.map((r, i) => {
+      const shows = [];
+      CITY_COLUMNS.forEach(c => {
+        if (bool(r[c.colIndex])) {
+          shows.push(c.key);
+        }
+      });
+      return {
+        id:            i,
+        slNo:          parseInt(r[0]) || (i + 1),
+        brandName:     r[1]?.trim() || '',
+        poc:           r[2]?.trim() || '',
+        email:         r[3]?.trim() || '',
+        consentSent:   bool(r[4]),
+        gstReceived:   bool(r[5]),
+        bookLaunch:    bool(r[6]),
+        stageActivity: r[7]?.trim() || '',
+        shows:         shows,
+        isOnboarded:   shows.length > 0
+      };
+    });
+  } catch (err) {
+    console.warn('[CCI] Tracker fetch failed:', err.message);
+    anyFailed = true;
+  }
+
   const promises = SHOWS.map(async show => {
     try {
       const csv = await fetchCSV(show.gid);
