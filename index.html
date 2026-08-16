@@ -1038,6 +1038,11 @@ function openModal(id) {
     <div class="info-box full"><div class="info-lbl">✉️ Email</div><div class="info-val">${emailHtml}</div></div>
     <div class="info-box"><div class="info-lbl">🔢 Entry No.</div><div class="info-val">#${a.slNo}</div></div>
     <div class="info-box"><div class="info-lbl">📊 Total Shows</div><div class="info-val">${a.shows.length} show${a.shows.length!==1?'s':''}</div></div>
+    <div class="info-box full">
+      <button class="btn-refresh" style="width:100%;justify-content:center" onclick="downloadConsent(${a.id})">
+        📄 Download Consent Letter
+      </button>
+    </div>
   </div>
 
   <div class="section-lbl">Compliance Status</div>
@@ -1081,6 +1086,38 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('sc-db').classList.add('active');
   loadAllData();
 });
+
+// ── CONSENT LETTER ───────────────────────────────────────────
+function downloadConsent(id) {
+  const a = allArtists.find(x=>x.id===id);
+  if(!a) return;
+
+  if (a.shows.length === 0) {
+    alert("This artist is not attending any shows.");
+    return;
+  }
+
+  const letters = a.shows.map(k => {
+    const s = SHOWS.find(x=>x.key===k);
+    if (!s) return '';
+    return \`TO WHOMSOEVER IT MAY CONCERN
+
+This is to confirm that \${a.brandName} will participate in \${s.city} Comic Con 2026, to be held at \${s.venue} from \${s.dates}.
+They have taken a stall/booth and will be present at the event for exhibition purposes.
+\`;
+  }).filter(Boolean).join('\\n\\n------------------------------------------------------------\\n\\n');
+
+  const blob = new Blob([letters], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const aTag = document.createElement('a');
+  aTag.href = url;
+  aTag.download = \`Consent_Letter_\${a.brandName.replace(/[^a-z0-9]/gi, '_')}.txt\`;
+  document.body.appendChild(aTag);
+  aTag.click();
+  document.body.removeChild(aTag);
+  URL.revokeObjectURL(url);
+}
+
 </script>
 </body>
 </html>
