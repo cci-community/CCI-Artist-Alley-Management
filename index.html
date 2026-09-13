@@ -1061,6 +1061,7 @@ function openModal(id) {
           (a.email&&x.email===a.email)||(x.brandName.toLowerCase()===a.brandName.toLowerCase())
         );
         const gst = sd?.gstReceived;
+        const stage = sd?.stageSessionInterest;
         return `
         <div class="show-list-item">
           <div>
@@ -1070,6 +1071,7 @@ function openModal(id) {
           <div class="sli-status">
             <button class="badge" style="cursor:pointer;border:none;background:rgba(124,58,237,.15);color:#c084fc;padding:6px 12px;font-weight:600" onclick="downloadConsent(${a.id}, '${k}')">📄 Consent Letter</button>
             <span class="badge ${gst?'b-ok':'b-pend'}">${gst?'✓ GST':'✗ GST'}</span>
+            <span class="badge ${stage?'b-ok':'b-pend'}">${stage?'✓ Stage Interest':'✗ Stage Interest'}</span>
           </div>
         </div>`;
       }).join('')
@@ -1102,10 +1104,6 @@ function openModal(id) {
     <div style="flex:1;min-width:0">
       <div class="modal-name">${esc(a.brandName)}</div>
       <div class="modal-poc">👤 ${esc(a.poc||'—')}</div>
-      <div class="modal-tags">
-        ${a.shows.map(k=>{const s=SHOWS.find(x=>x.key===k);return `<span class="badge b-show">${s?s.city:k}</span>`;}).join('')}
-        ${a.stageSessionInterest?`<span class="badge" style="background:rgba(192,132,252,.15);color:#c084fc">🎤 Stage Interest</span>`:''}
-      </div>
     </div>
   </div>
 
