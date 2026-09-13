@@ -419,6 +419,7 @@ const SHOWS = [
   { key:'GGCC', city:'Gurugram',    dates:'Mar 13-14',   venue:'Gymkhana Club',                   gid:'12'  },
   { key:'MCC', city:'Mumbai',      dates:'Apr 3-4',      venue:'Jio World Convention Centre',     gid:'13'  },
 ];
+
 const PROXIES = [
   u => u,
   u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
@@ -886,17 +887,17 @@ function renderShowView() {
 
     if(shf && !artists.length) continue;
 
-    const consentOk  = artists.filter(a=>a.consentSent).length;
-    const gstOk      = artists.filter(a=>a.gstReceived).length;
-    const stageCount = artists.filter(a=>a.stageSessionInterest).length;
+    // Use city tab rows for accurate per-city counts
+    const cityRows   = showData[show.key] || [];
+    const consentOk  = cityRows.filter(a=>a.consentSent).length;
+    const gstOk      = cityRows.filter(a=>a.gstReceived).length;
+    const stageCount = cityRows.filter(a=>a.stageSessionInterest).length;
     anyShown = true;
 
-    const spots  = totalSpots[show.key] || 0;
-    const filled = artists.length;
-    const spotsLabel = spots
-      ? `<span style="font-size:13px;font-weight:700;color:var(--muted)">${filled}/${spots} Spots filled</span>`
-      : `<span style="font-size:13px;font-weight:700;color:var(--muted)">${filled} artists</span>`;
-    const spotsPct = spots ? Math.min(100, Math.round(filled / spots * 100)) : 0;
+    // filled = actual artist rows in this city's tab (source of truth)
+    const filled     = (showData[show.key] || []).length;
+    const spots      = totalSpots[show.key] || 0;
+    const spotsPct   = spots ? Math.min(100, Math.round(filled / spots * 100)) : 0;
     const spotsColor = spotsPct >= 100 ? 'var(--danger)' : spotsPct >= 75 ? 'var(--warning)' : 'var(--success)';
 
     html += `
@@ -910,15 +911,22 @@ function renderShowView() {
             ${stageCount?` &nbsp;·&nbsp; <span style="color:#c084fc">🎤 ${stageCount} stage interest</span>`:''}
           </div>
         </div>
-        <div class="show-stats" style="align-items:flex-end;flex-direction:column;gap:4px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="show-count" style="color:${spotsColor}">${filled}</span>
-            ${spots ? `<span style="font-size:14px;color:var(--muted);font-weight:700">/ ${spots}</span>` : ''}
-            <span style="font-size:11px;color:var(--muted);font-weight:600">Spots filled</span>
-            <span class="show-arrow">▼</span>
+        <div class="show-stats" style="align-items:flex-end;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="show-count" style="color:${spotsColor};font-size:22px;font-weight:900;line-height:1">${filled}</span>
+            ${spots
+              ? `<span style="font-size:15px;color:var(--muted);font-weight:700;line-height:1">/ ${spots}</span>
+                 <span style="font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap">artists</span>`
+              : `<span style="font-size:11px;color:var(--muted);font-weight:600">artists</span>`
+            }
+            <span class="show-arrow" style="margin-left:6px">▼</span>
           </div>
-          ${spots ? `<div style="width:120px;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden">
-            <div style="height:100%;width:${spotsPct}%;background:${spotsColor};border-radius:2px;transition:width .4s"></div>
+          ${spots ? `
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:100px;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden">
+              <div style="height:100%;width:${spotsPct}%;background:${spotsColor};border-radius:2px;transition:width .4s"></div>
+            </div>
+            <span style="font-size:10px;color:${spotsColor};font-weight:700">${spotsPct}%</span>
           </div>` : ''}
         </div>
       </div>
