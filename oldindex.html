@@ -291,7 +291,8 @@ tbody tr:last-child td{border-bottom:none}
         <option value="">All Artists</option>
         <option value="no-consent">Missing Consent</option>
         <option value="no-gst">Missing GST</option>
-        <option value="stage">Has Stage Interest</option>
+        <option value="book-launch">Book Launch</option>
+        <option value="stage">Has Stage Activity</option>
       </select>
       <select class="filter-sel" id="showFilter" onchange="applyFilters()">
         <option value="">All Shows</option>
@@ -318,9 +319,10 @@ tbody tr:last-child td{border-bottom:none}
             <th onclick="sortBy('poc')">POC</th>
             <th>Email</th>
             <th>Shows</th>
-            <th onclick="sortBy('consentSent')">Consent Sent</th>
-            <th onclick="sortBy('gstReceived')">GST Received</th>
-            <th onclick="sortBy('stageSessionInterest')">Stage Interest</th>
+            <th onclick="sortBy('consentSent')">Consent</th>
+            <th onclick="sortBy('gstReceived')">GST</th>
+            <th onclick="sortBy('bookLaunch')">Book Launch</th>
+            <th>Stage Activity</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -419,6 +421,7 @@ const SHOWS = [
   { key:'GGCC', city:'Gurugram',    dates:'Mar 13-14',   venue:'Gymkhana Club',                   gid:'12'  },
   { key:'MCC', city:'Mumbai',      dates:'Apr 3-4',      venue:'Jio World Convention Centre',     gid:'13'  },
 ];
+
 const PROXIES = [
   u => u,
   u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
@@ -434,11 +437,10 @@ const GRADS = [
 
 // ── STATE ────────────────────────────────────────────────────
 // allArtists: deduplicated master list keyed by email/brand
-// Each artist: { id, slNo, brandName, poc, email, consentSent, gstReceived, stageSessionInterest, assets, shows:['VCC','HCC',...] }
+// Each artist: { id, slNo, brandName, poc, email, consentSent, gstReceived, bookLaunch, stageActivity, shows:['VCC','HCC',...] }
 let allArtists   = [];
 let onboardedSet = new Set(); // artist IDs present in any show sheet
 let showData     = {};        // showKey -> artist array (from that sheet)
-let totalSpots   = {};        // showKey -> number from cell J3 of that city tab
 let filteredArtists = [];
 let currentView  = 'grid';
 let mainView     = 'database';
@@ -478,8 +480,6 @@ function parseCSV(raw) {
 }
 
 // ── PARSE A SHOW'S CSV ───────────────────────────────────────
-// Expected columns per city tab:
-//   0=SL, 1=Brand Name, 2=POC, 3=Email, 4=Assets(link), 5=Consent Sent, 6=GST Received, 7=Stage Session Interest
 function parseShowCSV(raw, showKey) {
   const rows = parseCSV(raw);
   if(rows.length < 2) return [];
@@ -494,15 +494,15 @@ function parseShowCSV(raw, showKey) {
     .filter(r => r[1] && r[1].trim())
     .map((r, i) => ({
       id: 0, // set when merged
-      slNo:                parseInt(r[0]) || (i+1),
-      brandName:           r[1]?.trim() || '',
-      poc:                 r[2]?.trim() || '',
-      email:               r[3]?.trim() || '',
-      assets:              r[4]?.trim() || '',   // hyperlink / URL
-      consentSent:         bool(r[5]),
-      gstReceived:         bool(r[6]),
-      stageSessionInterest: bool(r[7]),
-      shows:               [showKey],
+      slNo:          parseInt(r[0]) || (i+1),
+      brandName:     r[1]?.trim() || '',
+      poc:           r[2]?.trim() || '',
+      email:         r[3]?.trim() || '',
+      consentSent:   bool(r[4]),
+      gstReceived:   bool(r[5]),
+      bookLaunch:    bool(r[6]),
+      stageActivity: r[7]?.trim() || '',
+      shows:         [showKey],
     }));
 }
 
@@ -557,10 +557,10 @@ function mergeIntoMaster() {
         (master.brandName.toLowerCase() === a.brandName.toLowerCase())
       );
       if (match) {
-        if(a.consentSent)          match.consentSent          = true;
-        if(a.gstReceived)          match.gstReceived          = true;
-        if(a.stageSessionInterest) match.stageSessionInterest = true;
-        if(a.assets && !match.assets) match.assets = a.assets;
+        if(a.consentSent) match.consentSent = true;
+        if(a.gstReceived) match.gstReceived = true;
+        if(a.bookLaunch)  match.bookLaunch  = true;
+        if(a.stageActivity && !match.stageActivity) match.stageActivity = a.stageActivity;
       }
     }
   }
@@ -614,17 +614,17 @@ async function loadAllData() {
         }
       });
       return {
-        id:                   i,
-        slNo:                 parseInt(r[0]) || (i + 1),
-        brandName:            r[1]?.trim() || '',
-        poc:                  r[2]?.trim() || '',
-        email:                r[4]?.trim() || '',
-        consentSent:          false,
-        gstReceived:          false,
-        stageSessionInterest: false,
-        assets:               '',
-        shows:                shows,
-        isOnboarded:          shows.length > 0
+        id:            i,
+        slNo:          parseInt(r[0]) || (i + 1),
+        brandName:     r[1]?.trim() || '',
+        poc:           r[2]?.trim() || '',
+        email:         r[4]?.trim() || '',
+        consentSent:   false,
+        gstReceived:   false,
+        bookLaunch:    false,
+        stageActivity: '',
+        shows:         shows,
+        isOnboarded:   shows.length > 0
       };
     });
   } catch (err) {
@@ -636,15 +636,9 @@ async function loadAllData() {
     try {
       const csv = await fetchTabCSV(show.key);
       showData[show.key] = parseShowCSV(csv, show.key);
-      // Parse total spots from cell J3 (row index 2, col index 9 in 0-based CSV)
-      const rows = parseCSV(csv);
-      // J3 = row 2 (0-indexed), col 9 (J=10th col, index 9)
-      const spotsRaw = rows[2]?.[9];
-      totalSpots[show.key] = parseInt(spotsRaw) || 0;
     } catch(e) {
       console.warn(`[CCI] ${show.key} failed:`, e.message);
       if(!showData[show.key]) showData[show.key] = []; // keep existing if any
-      totalSpots[show.key] = 0;
       anyFailed = true;
     }
   });
@@ -740,9 +734,10 @@ function applyFilters() {
 
   filteredArtists = base.filter(a => {
     if(q && !([a.brandName,a.poc,a.email].join(' ').toLowerCase().includes(q))) return false;
-    if(sf==='no-consent' && a.consentSent)          return false;
-    if(sf==='no-gst'     && a.gstReceived)          return false;
-    if(sf==='stage'      && !a.stageSessionInterest) return false;
+    if(sf==='no-consent' && a.consentSent)  return false;
+    if(sf==='no-gst'     && a.gstReceived)  return false;
+    if(sf==='book-launch'&& !a.bookLaunch)  return false;
+    if(sf==='stage'      && !a.stageActivity) return false;
     if(shf && !a.shows.includes(shf))       return false;
     return true;
   });
@@ -828,7 +823,8 @@ function buildCard(a,i) {
         <span class="check-lbl">GST</span>
         <span class="check-val ${a.gstReceived?'done':'pend'}">${a.gstReceived?'Received':'Pending'}</span>
       </div>
-      ${a.stageSessionInterest?`<div class="check-row"><div class="chk done">🎤</div><span class="check-lbl" style="color:#c084fc">Stage Interest</span></div>`:''}
+      ${a.bookLaunch?`<div class="check-row"><div class="chk done">📖</div><span class="check-lbl" style="color:var(--cyan)">Book Launch</span></div>`:''}
+      ${a.stageActivity?`<div class="check-row"><div class="chk done">🎤</div><span class="check-lbl" style="color:#c084fc">Stage Activity</span></div>`:''}
     </div>
     <div class="card-footer">
       <button class="btn-detail" onclick="event.stopPropagation();openModal(${a.id})">Details →</button>
@@ -840,15 +836,16 @@ function buildCard(a,i) {
 function renderTableView() {
   const tb = document.getElementById('tableBody');
   if(!filteredArtists.length) {
-    tb.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:48px;color:var(--muted)">No artists found</td></tr>`;
+    tb.innerHTML=`<tr><td colspan="9" style="text-align:center;padding:48px;color:var(--muted)">No artists found</td></tr>`;
     return;
   }
   tb.innerHTML = filteredArtists.map(a => {
     const [g1,g2]=grad(a.brandName); const ini=initials(a.brandName);
     const email = a.email ? `<a href="mailto:${a.email}" onclick="event.stopPropagation()" style="color:var(--muted);font-size:11px">${a.email.split(',')[0].trim()}</a>` : '—';
-    const cb = a.consentSent ? `<span class="badge b-ok">✓ Sent</span>` : `<span class="badge b-pend">✗ Pending</span>`;
-    const gb = a.gstReceived ? `<span class="badge b-ok">✓ Received</span>` : `<span class="badge b-pend">✗ Pending</span>`;
-    const sa = a.stageSessionInterest ? `<span class="badge" style="background:rgba(192,132,252,.15);color:#c084fc">🎤 Interested</span>` : '<span style="color:var(--muted)">—</span>';
+    const cb = a.consentSent ? `<span class="badge b-ok">Sent</span>` : `<span class="badge b-pend">Pending</span>`;
+    const gb = a.gstReceived ? `<span class="badge b-ok">Received</span>` : `<span class="badge b-pend">Pending</span>`;
+    const bb = a.bookLaunch  ? `<span class="badge b-book">📖 Yes</span>` : '—';
+    const sa = a.stageActivity ? `<span style="font-size:11px;color:var(--text2);max-width:160px;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.stageActivity)}</span>` : '—';
     return `
     <tr onclick="openModal(${a.id})">
       <td>${a.slNo}</td>
@@ -861,6 +858,7 @@ function renderTableView() {
       <td>${showPills(a.shows)}</td>
       <td>${cb}</td>
       <td>${gb}</td>
+      <td>${bb}</td>
       <td>${sa}</td>
     </tr>`;
   }).join('');
@@ -888,16 +886,9 @@ function renderShowView() {
 
     const consentOk  = artists.filter(a=>a.consentSent).length;
     const gstOk      = artists.filter(a=>a.gstReceived).length;
-    const stageCount = artists.filter(a=>a.stageSessionInterest).length;
+    const launches   = artists.filter(a=>a.bookLaunch).length;
+    const stageCount = artists.filter(a=>a.stageActivity).length;
     anyShown = true;
-
-    const spots  = totalSpots[show.key] || 0;
-    const filled = artists.length;
-    const spotsLabel = spots
-      ? `<span style="font-size:13px;font-weight:700;color:var(--muted)">${filled}/${spots} Spots filled</span>`
-      : `<span style="font-size:13px;font-weight:700;color:var(--muted)">${filled} artists</span>`;
-    const spotsPct = spots ? Math.min(100, Math.round(filled / spots * 100)) : 0;
-    const spotsColor = spotsPct >= 100 ? 'var(--danger)' : spotsPct >= 75 ? 'var(--warning)' : 'var(--success)';
 
     html += `
     <div class="show-group" id="sg-${show.key}">
@@ -907,19 +898,14 @@ function renderShowView() {
           <div class="show-meta">📍 ${show.venue} &nbsp;·&nbsp;
             <span style="color:var(--success)">✓ ${consentOk} consent</span> &nbsp;·&nbsp;
             <span style="color:var(--success)">✓ ${gstOk} GST</span>
-            ${stageCount?` &nbsp;·&nbsp; <span style="color:#c084fc">🎤 ${stageCount} stage interest</span>`:''}
+            ${launches?` &nbsp;·&nbsp; <span style="color:var(--cyan)">📖 ${launches} book launch</span>`:''}
+            ${stageCount?` &nbsp;·&nbsp; <span style="color:#c084fc">🎤 ${stageCount} stage</span>`:''}
           </div>
         </div>
-        <div class="show-stats" style="align-items:flex-end;flex-direction:column;gap:4px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="show-count" style="color:${spotsColor}">${filled}</span>
-            ${spots ? `<span style="font-size:14px;color:var(--muted);font-weight:700">/ ${spots}</span>` : ''}
-            <span style="font-size:11px;color:var(--muted);font-weight:600">Spots filled</span>
-            <span class="show-arrow">▼</span>
-          </div>
-          ${spots ? `<div style="width:120px;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden">
-            <div style="height:100%;width:${spotsPct}%;background:${spotsColor};border-radius:2px;transition:width .4s"></div>
-          </div>` : ''}
+        <div class="show-stats">
+          <span class="show-count">${artists.length}</span>
+          <span style="font-size:11px;color:var(--muted);font-weight:600">artists</span>
+          <span class="show-arrow">▼</span>
         </div>
       </div>
       <div class="show-table">
@@ -939,16 +925,6 @@ function renderShowView() {
 }
 
 function buildShowTable(artists, showKey) {
-  // Inline checkbox helper — read-only visual checkbox
-  const chk = (val, label) => `
-    <label style="display:inline-flex;align-items:center;gap:5px;cursor:default;user-select:none">
-      <span style="width:16px;height:16px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;
-        background:${val?'rgba(16,185,129,.2)':'rgba(255,255,255,.05)'};
-        border:1px solid ${val?'var(--success)':'rgba(255,255,255,.12)'};
-        color:${val?'var(--success)':'var(--muted)'}">${val?'✓':''}</span>
-      <span style="font-size:11px;color:${val?'var(--success)':'var(--muted)'};font-weight:600">${val?label:'—'}</span>
-    </label>`;
-
   return `
   <div class="table-wrap show-table" style="margin-bottom:0;border-radius:0 0 var(--r-lg) var(--r-lg);border-top:none">
     <table>
@@ -958,10 +934,11 @@ function buildShowTable(artists, showKey) {
           <th>Brand Name</th>
           <th>POC</th>
           <th>Email</th>
-          <th>Assets</th>
-          <th>Consent Letter Sent</th>
-          <th>GST Received</th>
-          <th>Stage Session Interest</th>
+          <th>Consent</th>
+          <th>GST</th>
+          <th>Book Launch</th>
+          <th>Stage Activity</th>
+          <th>Other Shows</th>
         </tr>
       </thead>
       <tbody>
@@ -970,25 +947,16 @@ function buildShowTable(artists, showKey) {
           const masterArtist = allArtists.find(x=>
             (x.email&&x.email===a.email)||(x.brandName.toLowerCase()===a.brandName.toLowerCase())
           );
-
-          // Per-show data to get accurate per-city checkbox state
-          const sd = (showData[showKey]||[]).find(x=>
-            (a.email&&x.email&&x.email.toLowerCase()===a.email.toLowerCase())||
-            (x.brandName.toLowerCase()===a.brandName.toLowerCase())
-          ) || a;
-
-          const emailHtml = a.email
-            ? `<a href="mailto:${a.email}" onclick="event.stopPropagation()" style="color:var(--muted);font-size:11px">${a.email.split(',')[0].trim()}</a>`
-            : '<span style="color:var(--muted)">—</span>';
-
-          // Assets as hyperlink
-          const assetsLink = sd.assets
-            ? `<a href="${sd.assets}" target="_blank" rel="noopener" onclick="event.stopPropagation()"
-                style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);border-radius:6px;color:#c084fc;font-size:11px;font-weight:700;white-space:nowrap">
-                📎 View Assets
-              </a>`
-            : '<span style="color:var(--muted);font-size:11px">—</span>';
-
+          const otherShows = masterArtist
+            ? masterArtist.shows.filter(k=>k!==showKey).map(k=>{const s=SHOWS.find(x=>x.key===k);return s?s.city:k;}).join(', ')
+            : '';
+          const cb = a.consentSent ? `<span class="badge b-ok">✓ Sent</span>` : `<span class="badge b-pend">✗ Pending</span>`;
+          const gb = a.gstReceived ? `<span class="badge b-ok">✓ Received</span>` : `<span class="badge b-pend">✗ Pending</span>`;
+          const bb = a.bookLaunch  ? `<span class="badge b-book">📖 Yes</span>` : `<span style="color:var(--muted)">—</span>`;
+          const email = a.email ? `<a href="mailto:${a.email}" onclick="event.stopPropagation()" style="color:var(--muted);font-size:11px">${a.email.split(',')[0].trim()}</a>` : '—';
+          const sa = a.stageActivity
+            ? `<span style="font-size:11px;color:var(--accent-l);max-width:140px;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a.stageActivity)}">${esc(a.stageActivity)}</span>`
+            : `<span style="color:var(--muted)">—</span>`;
           const masterId = masterArtist?.id;
           return `
           <tr onclick="${masterId!==undefined?`openModal(${masterId})`:'void(0)'}">
@@ -997,12 +965,13 @@ function buildShowTable(artists, showKey) {
               <div class="avatar-sm" style="background:linear-gradient(135deg,${g1},${g2})">${ini}</div>
               <span style="font-size:13px;font-weight:700;color:var(--text)">${esc(a.brandName)}</span>
             </div></td>
-            <td style="font-size:12px;color:var(--text)">${esc(a.poc||'—')}</td>
-            <td>${emailHtml}</td>
-            <td>${assetsLink}</td>
-            <td>${chk(sd.consentSent, 'Sent')}</td>
-            <td>${chk(sd.gstReceived, 'Received')}</td>
-            <td>${chk(sd.stageSessionInterest, 'Interested')}</td>
+            <td style="font-size:12px">${esc(a.poc||'—')}</td>
+            <td>${email}</td>
+            <td>${cb}</td>
+            <td>${gb}</td>
+            <td>${bb}</td>
+            <td>${sa}</td>
+            <td style="font-size:11px;color:var(--text2)">${otherShows||'<span style="color:var(--muted)">—</span>'}</td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -1057,7 +1026,8 @@ function openModal(id) {
       <div class="modal-poc">👤 ${esc(a.poc||'—')}</div>
       <div class="modal-tags">
         ${a.shows.map(k=>{const s=SHOWS.find(x=>x.key===k);return `<span class="badge b-show">${s?s.city:k}</span>`;}).join('')}
-        ${a.stageSessionInterest?`<span class="badge" style="background:rgba(192,132,252,.15);color:#c084fc">🎤 Stage Interest</span>`:''}
+        ${a.bookLaunch?`<span class="badge b-book">📖 Book Launch</span>`:''}
+        ${a.stageActivity?`<span class="badge" style="background:rgba(192,132,252,.15);color:#c084fc">🎤 Stage</span>`:''}
       </div>
     </div>
   </div>
@@ -1071,10 +1041,10 @@ function openModal(id) {
   <div class="section-lbl">Shows This Artist Is Attending</div>
   <div class="show-list" style="margin-bottom:22px">${showsHtml}</div>
 
-  ${a.assets?`
-  <div class="section-lbl">Assets</div>
+  ${a.stageActivity?`
+  <div class="section-lbl">Stage Activity</div>
   <div class="info-box full" style="margin-bottom:22px">
-    <div class="info-val"><a href="${a.assets}" target="_blank" rel="noopener" style="color:var(--accent-l)">📎 View Assets</a></div>
+    <div class="info-val" style="font-size:13px;line-height:1.6">${esc(a.stageActivity)}</div>
   </div>`:''}`;
 
   document.getElementById('overlay').classList.add('open');
