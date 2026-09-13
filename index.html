@@ -821,19 +821,7 @@ function buildCard(a,i) {
       </div>
     </div>
     <div class="card-shows">${showPills(a.shows)}</div>
-    <div class="card-checks">
-      <div class="check-row">
-        <div class="chk ${a.consentSent?'done':'pend'}">${a.consentSent?'✓':'○'}</div>
-        <span class="check-lbl">Consent</span>
-        <span class="check-val ${a.consentSent?'done':'pend'}">${a.consentSent?'Sent':'Pending'}</span>
-      </div>
-      <div class="check-row">
-        <div class="chk ${a.gstReceived?'done':'pend'}">${a.gstReceived?'✓':'○'}</div>
-        <span class="check-lbl">GST</span>
-        <span class="check-val ${a.gstReceived?'done':'pend'}">${a.gstReceived?'Received':'Pending'}</span>
-      </div>
-      ${a.stageSessionInterest?`<div class="check-row"><div class="chk done">🎤</div><span class="check-lbl" style="color:#c084fc">Stage Interest</span></div>`:''}
-    </div>
+
     <div class="card-footer">
       <button class="btn-detail" onclick="event.stopPropagation();openModal(${a.id})">Details →</button>
     </div>
