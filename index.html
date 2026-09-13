@@ -637,11 +637,14 @@ async function loadAllData() {
     try {
       const csv = await fetchTabCSV(show.key);
       showData[show.key] = parseShowCSV(csv, show.key);
-      // Parse total spots from cell J3 (row index 2, col index 9 in 0-based CSV)
+      // Parse total spots from column J (index 9)
       const rows = parseCSV(csv);
-      // J3 = row 2 (0-indexed), col 9 (J=10th col, index 9)
-      const spotsRaw = rows[2]?.[9];
-      totalSpots[show.key] = parseInt(spotsRaw) || 0;
+      let spotsNum = 0;
+      for(let i=1; i<rows.length; i++) {
+        const val = parseInt(rows[i][9]);
+        if (val > 0) { spotsNum = val; break; }
+      }
+      totalSpots[show.key] = spotsNum;
     } catch(e) {
       console.warn(`[CCI] ${show.key} failed:`, e.message);
       if(!showData[show.key]) showData[show.key] = []; // keep existing if any
@@ -916,7 +919,7 @@ function renderShowView() {
             <span class="show-count" style="color:${spotsColor};font-size:22px;font-weight:900;line-height:1">${filled}</span>
             ${spots
               ? `<span style="font-size:15px;color:var(--muted);font-weight:700;line-height:1">/ ${spots}</span>
-                 <span style="font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap">artists</span>`
+                 <span style="font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap">spots filled</span>`
               : `<span style="font-size:11px;color:var(--muted);font-weight:600">artists</span>`
             }
             <span class="show-arrow" style="margin-left:6px">▼</span>
@@ -989,13 +992,28 @@ function buildShowTable(artists, showKey) {
             ? `<a href="mailto:${a.email}" onclick="event.stopPropagation()" style="color:var(--muted);font-size:11px">${a.email.split(',')[0].trim()}</a>`
             : '<span style="color:var(--muted)">—</span>';
 
-          // Assets as hyperlink
-          const assetsLink = sd.assets
-            ? `<a href="${sd.assets}" target="_blank" rel="noopener" onclick="event.stopPropagation()"
-                style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);border-radius:6px;color:#c084fc;font-size:11px;font-weight:700;white-space:nowrap">
-                📎 View Assets
-              </a>`
-            : '<span style="color:var(--muted);font-size:11px">—</span>';
+          // Assets logic
+          let assetsLink = '<span style="color:var(--muted);font-size:11px">—</span>';
+          if (sd.assets) {
+            let url = sd.assets.trim();
+            // If it doesn't start with http, and doesn't have spaces, assume it's a raw URL (like drive.google.com)
+            if (!url.match(/^https?:\/\//i) && !url.includes(' ')) {
+              url = 'https://' + url;
+            }
+            
+            // If it looks like a URL now, make it a link
+            if (url.match(/^https?:\/\//i)) {
+              assetsLink = `<a href="${url}" target="_blank" rel="noopener" onclick="event.stopPropagation()"
+                  style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);border-radius:6px;color:#c084fc;font-size:11px;font-weight:700;white-space:nowrap">
+                  📎 View Assets
+                </a>`;
+            } else {
+              // It's just text (e.g. brand name), display as a subtle badge instead of a broken link
+              assetsLink = `<span style="display:inline-flex;align-items:center;padding:3px 9px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:11px;font-weight:600;white-space:nowrap" title="Hyperlinks cannot be fetched from Google Sheets directly. Please paste the raw URL in the sheet.">
+                  📎 ${esc(sd.assets)}
+                </span>`;
+            }
+          }
 
           const masterId = masterArtist?.id;
           return `
@@ -1057,6 +1075,27 @@ function openModal(id) {
       }).join('')
     : '<div class="no-shows">Not assigned to any show yet</div>';
 
+  let modalAssetsHtml = '';
+  if (a.assets) {
+    let url = a.assets.trim();
+    if (!url.match(/^https?:\/\//i) && !url.includes(' ')) {
+      url = 'https://' + url;
+    }
+    if (url.match(/^https?:\/\//i)) {
+      modalAssetsHtml = `
+  <div class="section-lbl">Assets</div>
+  <div class="info-box full" style="margin-bottom:22px">
+    <div class="info-val"><a href="${url}" target="_blank" rel="noopener" style="color:var(--accent-l)">📎 View Assets</a></div>
+  </div>`;
+    } else {
+      modalAssetsHtml = `
+  <div class="section-lbl">Assets</div>
+  <div class="info-box full" style="margin-bottom:22px">
+    <div class="info-val"><span style="color:var(--text2);font-weight:600" title="Hyperlinks cannot be fetched from Google Sheets directly. Please paste the raw URL in the sheet.">📎 ${esc(a.assets)}</span></div>
+  </div>`;
+    }
+  }
+
   document.getElementById('modalBody').innerHTML = `
   <div class="modal-head">
     <div class="modal-av" style="background:linear-gradient(135deg,${g1},${g2})">${ini}</div>
@@ -1079,11 +1118,7 @@ function openModal(id) {
   <div class="section-lbl">Shows This Artist Is Attending</div>
   <div class="show-list" style="margin-bottom:22px">${showsHtml}</div>
 
-  ${a.assets?`
-  <div class="section-lbl">Assets</div>
-  <div class="info-box full" style="margin-bottom:22px">
-    <div class="info-val"><a href="${a.assets}" target="_blank" rel="noopener" style="color:var(--accent-l)">📎 View Assets</a></div>
-  </div>`:''}`;
+  ${modalAssetsHtml}`;
 
   document.getElementById('overlay').classList.add('open');
   document.body.style.overflow='hidden';
