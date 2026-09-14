@@ -121,6 +121,15 @@ async function loadAllData() {
     if (rows[0] && !rows[0].join('').toLowerCase().includes('brand')) {
       startIdx = 1;
     }
+    
+    const headerRow = rows[startIdx] || [];
+    // Dynamically update column indices in case columns shifted
+    CITY_COLUMNS.forEach(c => {
+      const foundIdx = headerRow.findIndex(h => h && h.toUpperCase().includes(c.key));
+      if (foundIdx !== -1) {
+        c.colIndex = foundIdx;
+      }
+    });
 
     const dataRows = rows.slice(startIdx + 1).filter(r => r[1] && r[1].trim());
 
