@@ -183,6 +183,27 @@ async function loadAllData() {
             if (cArtist.gstReceived) match.gstReceived = true;
             if (cArtist.bookLaunch)  match.bookLaunch  = true;
             if (cArtist.stageActivity && !match.stageActivity) match.stageActivity = cArtist.stageActivity;
+            
+            // Ensure the show is added even if missed in the master tracker
+            if (!match.shows.includes(city.key)) {
+              match.shows.push(city.key);
+              match.isOnboarded = true;
+            }
+          } else {
+            // Artist exists in city sheet but not found in master tracker, add them to the master list
+            allArtists.push({
+              id:            allArtists.length,
+              slNo:          cArtist.slNo || (allArtists.length + 1),
+              brandName:     cArtist.brandName,
+              poc:           cArtist.poc,
+              email:         cArtist.email,
+              consentSent:   cArtist.consentSent,
+              gstReceived:   cArtist.gstReceived,
+              bookLaunch:    cArtist.bookLaunch,
+              stageActivity: cArtist.stageActivity,
+              shows:         [city.key],
+              isOnboarded:   true
+            });
           }
         });
       } catch (e) {
